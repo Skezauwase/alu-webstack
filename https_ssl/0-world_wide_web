@@ -8,11 +8,9 @@ audit_subdomain() {
   local subdomain=$2
 
   # shellcheck disable=SC2086
-  dig "$subdomain.$domain" | grep -A1 'ANSWER SECTION:' | tail -n 1 | awk -v sname="$subdomain" '{
+  dig "$subdomain.$domain" | awk -v sname="$subdomain" '$1 ~ "^" sname "\\." {
     # The output of dig looks like: Name TTL IN TYPE IP
-    # Example: www.holberton.online. 87 IN A 54.210.47.110
-    # $4 is the record type (e.g., A)
-    # $5 is the destination (e.g., IP address)
+    # we match the line starting with the subdomain
     if ($4 != "") {
       print "The subdomain " sname " is a " $4 " record and points to " $5
     }
