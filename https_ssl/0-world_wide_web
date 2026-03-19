@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Audits subdomains for a given domain
+
+# Function to audit a specific subdomain
+# Arguments: $1 = domain, $2 = subdomain
+audit_subdomain() {
+  local domain=$1
+  local subdomain=$2
+
+  # shellcheck disable=SC2086
+  dig "$subdomain.$domain" | grep -A1 'ANSWER SECTION:' | tail -n 1 | awk -v sname="$subdomain" '{
+    # The output of dig looks like: Name TTL IN TYPE IP
+    # Example: www.holberton.online. 87 IN A 54.210.47.110
+    # $4 is the record type (e.g., A)
+    # $5 is the destination (e.g., IP address)
+    if ($4 != "") {
+      print "The subdomain " sname " is a " $4 " record and points to " $5
+    }
+  }'
+}
+
+# Check if at least one argument (domain) is provided
+if [ "$#" -lt 1 ]; then
+  exit 1
+fi
+
+DOMAIN=$1
+SUBDOMAIN=$2
+
+if [ "$#" -eq 1 ]; then
+  # List of subdomains to audit by default
+  SUBDOMAINS=("www" "lb-01" "web-01" "web-02")
+  for sub in "${SUBDOMAINS[@]}"; do
+    audit_subdomain "$DOMAIN" "$sub"
+  done
+else
+  # Audit the specific subdomain provided
+  audit_subdomain "$DOMAIN" "$SUBDOMAIN"
+fi
