@@ -8,11 +8,13 @@ audit_subdomain() {
   local subdomain=$2
 
   # shellcheck disable=SC2086
-  dig "$subdomain.$domain" | awk -v sname="$subdomain" '$1 ~ "^" sname "\\." {
-    # The output of dig looks like: Name TTL IN TYPE IP
-    # we match the line starting with the subdomain
-    if ($4 != "") {
+  dig "$subdomain.$domain" | awk -v sname="$subdomain" '
+  BEGIN { found_answer = 0 }
+  /;; ANSWER SECTION:/ { found_answer = 1; next }
+  found_answer && $1 ~ "^" sname "\\." {
+    if ($4 == "A" || $4 == "CNAME") {
       print "The subdomain " sname " is a " $4 " record and points to " $5
+      found_answer = 0 # stop after first answer for this subdomain
     }
   }'
 }
