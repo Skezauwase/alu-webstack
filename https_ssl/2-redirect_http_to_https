@@ -57,20 +57,20 @@ defaults
 
 frontend main
 	bind *:80
-	# Transparently redirect HTTP to HTTPS with a 301 status code
-	http-request redirect scheme https code 301 if !{ ssl_fc }
-	default_backend app-backend
+	# Enforce HTTPS redirect with 301 status code
+	redirect scheme https code 301 if !{ ssl_fc }
+	default_backend web-backend
 
 frontend main-https
 	bind *:443 ssl crt /etc/haproxy/certs/holberton.online.pem
 	reqadd X-Forwarded-Proto:\ https
-	default_backend app-backend
+	default_backend web-backend
 
-backend app-backend
+backend web-backend
 	balance roundrobin
 	server web-01 54.166.88.241:80 check
 	server web-02 3.80.189.90:80 check
 EOF
 
-# Restart HAProxy to apply changes
+# Restart HAProxy to apply the security policy
 service haproxy restart
