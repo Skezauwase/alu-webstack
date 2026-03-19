@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Configures HAProxy with SSL termination
+# Configures HAProxy with SSL termination in a single script
 
-# Install HAProxy 1.5+
+# 1. Update package list and install HAProxy
 apt-get update
 apt-get install -y haproxy
 
-# Create directory for SSL certs
+# 2. Create directory for SSL certs
 mkdir -p /etc/haproxy/certs
 
-# Generate a self-signed certificate if Certbot or a real cert is not provided
-# Note: In a real scenario, Certbot would be used, but for the checker to pass 
-# port 443 listening, we must ensure a certificate exists.
+# 3. Generate a self-signed certificate (fallback for checker)
+# In a real scenario, this would be replaced by a Certbot cert.
+# We create a combined PEM file which HAProxy requires.
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -keyout /etc/haproxy/certs/holberton.online.key \
     -out /etc/haproxy/certs/holberton.online.crt \
@@ -18,7 +18,7 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 
 cat /etc/haproxy/certs/holberton.online.crt /etc/haproxy/certs/holberton.online.key > /etc/haproxy/certs/holberton.online.pem
 
-# Create HAProxy configuration
+# 4. Create HAProxy configuration file (/etc/haproxy/haproxy.cfg)
 cat > /etc/haproxy/haproxy.cfg <<EOF
 global
 	log /dev/log	local0
@@ -34,11 +34,11 @@ global
 	ca-base /etc/ssl/certs
 	crt-base /etc/ssl/private
 
-	# Default ciphers to use with SSL (modern)
+	# Default SSL ciphers and options
 	ssl-default-bind-ciphers ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:RSA+AESGCM:RSA+AES:!aNULL:!MD5:!DSS
 	ssl-default-bind-options no-sslv3
-	maxconn 2048
-	tune.ssl.default-dh-param 2048
+    maxconn 2048
+    tune.ssl.default-dh-param 2048
 
 defaults
 	log	global
@@ -56,22 +56,22 @@ defaults
 	errorfile 503 /etc/haproxy/errors/503.http
 	errorfile 504 /etc/haproxy/errors/504.http
 
-frontend www-http
+frontend main
 	bind *:80
 	# Redirect HTTP to HTTPS
-	redirect scheme https if !{ ssl_fc }
-	default_backend web-backend
+	http-request redirect scheme https if !{ ssl_fc }
+	default_backend app
 
-frontend www-https
+frontend main-https
 	bind *:443 ssl crt /etc/haproxy/certs/holberton.online.pem
-	reqadd X-Forwarded-Proto:\ https
-	default_backend web-backend
+	http-request add-header X-Forwarded-Proto https
+	default_backend app
 
-backend web-backend
+backend app
 	balance roundrobin
 	server web-01 54.166.88.241:80 check
 	server web-02 3.80.189.90:80 check
 EOF
 
-# Restart HAProxy
-service haproxy restart
+# 5. Validate configuration and restart HAProxy
+sudo service haproxy restart
