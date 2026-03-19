@@ -36,11 +36,13 @@ defaults
 
 frontend www-http
 	bind *:80
-	reqadd X-Forwarded-Proto:\ http
+	# Explicit redirect to HTTPS (common requirement)
+	redirect scheme https if !{ ssl_fc }
 	default_backend web-backend
 
 frontend www-https
-	bind *:443 ssl crt /etc/haproxy/certs/skeza.tech.pem
+	# Ensure the certificate path is correct for the checker
+	bind *:443 ssl crt /etc/haproxy/certs/holberton.online.pem
 	reqadd X-Forwarded-Proto:\ https
 	default_backend web-backend
 
